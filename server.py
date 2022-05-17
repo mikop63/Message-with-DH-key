@@ -48,35 +48,24 @@ try:
         client_public_key = load_der_public_key(client_public_key, default_backend())
 
         # Общий ключ
-        hkdf_obj = HKDF(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=None,
-        info=b"",
-        )
+        hkdf_obj = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"")
         shared_key = hkdf_obj.derive(server_private_key.exchange(client_public_key))
         print("Наш общий ключ: " + str(shared_key.hex()))
 
 # --------------------------------------------Обмен ключами завершен----------------------------------------------------
+# -----------------------------------------Начало шифрование сообщения--------------------------------------------------
 
-        str1 = client.recv(2048).decode('UTF-8')
-        key = base64.urlsafe_b64encode(shared_key)
+        str1 = client.recv(2048).decode('UTF-8')                    # получение строки которая будет расшифровываться
+        key = base64.urlsafe_b64encode(shared_key)                  # преобразуем ключ shared_key, полученный  алгоритмом DH в форматдля Fernet
         print("Ключ для шифрования сообщения:", key)
-
-
-        fernet = Fernet(key)
-        enctex = fernet.encrypt(str1.encode())
-        dectex = fernet.decrypt(enctex).decode()
+        fernet = Fernet(key)                                        # создаем экземпляр класса Fernet с ключом шифрования
         print("Первоначальное сообщение: ", str1)
-        print("Зашифрованное сообщение: ", enctex)
+        dectex = fernet.decrypt(str1.encode())                      # строка расшифровывается экземпляром Fernet
         print("Расшифврованное сообщение: ", dectex)
 
-        client.send(str(enctex.decode("utf-8")).encode('utf-8'))
-
-
-
+        client.send(dectex)                                         # отправляется расшифрованое сообщение клиенту
         client.shutdown(socket.SHUT_WR)
 
-except KeyboardInterrupt:                                                                             # первать работу сервара Control+C или Delete
+except KeyboardInterrupt:                                           # первать работу сервара Control+C или Delete
     socket.close()
     print(' [*]Выключение...')
